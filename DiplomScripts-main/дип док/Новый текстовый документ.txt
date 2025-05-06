@@ -1,0 +1,116 @@
+    public float acceleration;
+    public float maxSpeed;
+    private float currentSpeed;
+    private Transform stopLine; // Линия останова
+    private float stopDistance = 1f; // Минимальное расстояние до следующего объекта или машины
+    private float frictionCoefficient = 0.8f; // Коэффициент трения (например, для сухого асфальта)
+    private float g = 9.81f;        // Ускорение свободного падения (9.81 м/с²)
+
+    // Метод для установки параметров
+    public void Initialize(float maxSpeed, float acceleration, float currentSpeed)
+    {
+        this.maxSpeed = maxSpeed;
+        this.acceleration = acceleration;
+        this.currentSpeed = currentSpeed;
+    }
+
+
+    void Update()
+    {
+
+        // Поиск ближайшей машины на полосе
+        GameObject nearestCar = FindNearestCar();
+
+
+        if (nearestCar != null)
+        {
+            float distanceToNextCar = Vector3.Distance(transform.position, nearestCar.transform.position);
+
+            // Если расстояние до ближайшей машины меньше минимального, начинаем тормозить
+            if (distanceToNextCar < stopDistance)
+            {
+                ApplyBrakes(distanceToNextCar); // Останавливаемся перед машиной
+            }
+            else
+            {
+                // Если машина далеко, ускоряемся
+                if (currentSpeed < maxSpeed)
+                {
+                    currentSpeed += acceleration * Time.deltaTime;
+                }
+            }
+        }
+        else if (stopLine != null)
+        {
+            // Если перед машиной есть линия останова, проверяем расстояние до неё
+            float distanceToStopLine = Vector3.Distance(transform.position, stopLine.position);
+
+            // Если расстояние до линии останова меньше минимального, начинаем тормозить
+            if (distanceToStopLine < stopDistance)
+            {
+                currentSpeed = 0; // Останавливаемся перед линией
+            }
+            else
+            {
+                // Если машина далеко, ускоряемся
+                if (currentSpeed < maxSpeed)
+                {
+                    currentSpeed += acceleration * Time.deltaTime;
+                }
+            }
+        }
+
+        // Перемещение автомобиля вперёд
+        //transform.Translate(Vector3.forward * currentSpeed * Time.deltaTime);
+    }
+
+    // Метод для поиска ближайшей машины на полосе
+    GameObject FindNearestCar()
+    {
+        GameObject[] cars = GameObject.FindGameObjectsWithTag("Car"); // Получаем все объекты с тегом "Car"
+        GameObject nearestCar = null;
+        float closestDistance = Mathf.Infinity;
+
+        foreach (GameObject car in cars)
+        {
+            if (car != this.gameObject) // Не проверять саму себя
+            {
+                float distance = Vector3.Distance(transform.position, car.transform.position);
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    nearestCar = car;
+                }
+            }
+        }
+
+        return nearestCar;
+    }
+
+    // Метод для применения торможения (плавно)
+    void ApplyBrakes(float distanceToObject)
+    {
+        // Рассчитываем тормозной путь
+        float brakingDistance = CalculateBrakingDistance(currentSpeed);
+
+        // Если тормозной путь больше, чем расстояние до объекта, начинаем плавно снижать скорость
+        if (distanceToObject < brakingDistance)
+        {
+            currentSpeed -= (currentSpeed / brakingDistance) * Time.deltaTime; // Плавное снижение скорости
+            currentSpeed = Mathf.Max(currentSpeed, 0); // Не даем скорости стать отрицательной
+        }
+        else
+        {
+            // Если не нужно тормозить, ускоряемся
+            if (currentSpeed < maxSpeed)
+            {
+                currentSpeed += acceleration * Time.deltaTime;
+            }
+        }
+    }
+
+    // Метод для расчета тормозного пути
+    float CalculateBrakingDistance(float speed)
+    {
+        return Mathf.Pow(speed, 2) / (2 * frictionCoefficient * g); // Формула тормозного пути
+    }
